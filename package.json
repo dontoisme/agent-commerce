@@ -1,0 +1,44 @@
+{
+  "name": "agent-commerce",
+  "version": "0.1.0",
+  "description": "CLI-native transaction confirmation layer for AI agent commerce",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "agent-pay": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli/index.ts",
+    "build:confirm": "cd src/confirm && swiftc -framework LocalAuthentication -framework Security TouchIDConfirm.swift -o ../../bin/touchid-confirm",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "agent-commerce",
+    "ai-agent",
+    "cli",
+    "payment",
+    "stripe",
+    "mcp",
+    "touch-id"
+  ],
+  "author": "Don Hogan",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "stripe": "^17.7.0",
+    "chalk": "^5.4.1",
+    "ora": "^8.2.0",
+    "conf": "^13.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.3",
+    "vitest": "^3.0.5",
+    "@types/node": "^22.12.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
