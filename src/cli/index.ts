@@ -218,6 +218,127 @@ program
     console.log();
   });
 
+// ── demo ────────────────────────────────────────────────────────────────
+
+program
+  .command("demo [service]")
+  .description("Dry-run the full purchase flow with step-by-step logging")
+  .action(async (service: string = "linear") => {
+    const step = (n: number, label: string) =>
+      console.log(`\n${chalk.dim(`[${n}/8]`)} ${chalk.bold(label)}`);
+
+    const log = (msg: string) => console.log(`      ${chalk.dim(msg)}`);
+    const ok = (msg: string) => console.log(`      ${chalk.green("✓")} ${msg}`);
+    const data = (label: string, value: string) =>
+      console.log(`      ${chalk.dim(label + ":")} ${value}`);
+
+    console.log(chalk.bold("\n━━━ agent-pay dry run ━━━"));
+    console.log(chalk.dim("No real payments. No Stripe calls. Just the flow.\n"));
+
+    // 1
+    step(1, "Agent requests service signup");
+    log(`Claude Code: "I recommend ${service}. Want me to set it up?"`);
+    log(`User: "Yes"`);
+
+    // 2
+    step(2, "Discover service via MCP registry");
+    const svc = await discoverService(service.toLowerCase());
+    if (svc) {
+      ok(`Found: ${svc.name}`);
+      data("Price", svc.pricing.display);
+      data("MCP server", svc.mcpServer ? "available" : "none");
+    } else {
+      ok(`Found: ${service} (simulated)`);
+      data("Price", "$8/mo");
+    }
+
+    // 3
+    step(3, "Load payment method from vault");
+    const method = await getDefaultPaymentMethod();
+    if (method) {
+      ok(`${method.brand.toUpperCase()} ****${method.last4} (from macOS Keychain)`);
+      data("Payment method ID", method.id);
+      data("Storage", "macOS Keychain (biometric-protected)");
+    } else {
+      ok("Visa ****4242 (simulated — no vault configured)");
+      data("Payment method ID", "pm_test_visa_4242");
+    }
+
+    const pm = method
+      ? { brand: method.brand, last4: method.last4, id: method.id }
+      : { brand: "visa", last4: "4242", id: "pm_test_visa_4242" };
+
+    const methodDisplay = `${pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1)} ****${pm.last4}`;
+    const price = svc?.pricing.display ?? "$8/mo";
+    const serviceName = svc?.name ?? service;
+
+    // 4
+    step(4, "Trigger Touch ID confirmation");
+    log("Calling: bin/touchid-confirm");
+    data("--service", serviceName);
+    data("--amount", price);
+    data("--method", methodDisplay);
+    console.log();
+    console.log(chalk.yellow("      ┌─────────────────────────────────────────┐"));
+    console.log(chalk.yellow("      │  Touch ID                               │"));
+    console.log(chalk.yellow("      │                                         │"));
+    console.log(chalk.yellow(`      │  Confirm ${price.padEnd(6)} payment to ${serviceName.padEnd(10)} │`));
+    console.log(chalk.yellow(`      │  using ${methodDisplay.padEnd(22)}  │`));
+    console.log(chalk.yellow("      │                                         │"));
+    console.log(chalk.yellow("      │  [Cancel]           [Use Password]      │"));
+    console.log(chalk.yellow("      └─────────────────────────────────────────┘"));
+    console.log();
+    ok("User authenticates with fingerprint");
+    data("Result", '{"success": true}');
+
+    // 5
+    step(5, "Create Shared Payment Token (SPT)");
+    const now = Math.floor(Date.now() / 1000);
+    data("payment_method", pm.id);
+    data("max_amount", String(svc?.pricing.amount ?? 800) + " cents");
+    data("currency", "usd");
+    data("expires_at", `${now + 300} (5 minutes from now)`);
+    ok("SPT created: spt_demo_" + Math.random().toString(36).slice(2, 10));
+
+    // 6
+    step(6, "Process payment via Stripe");
+    data("API call", "POST /v1/payment_intents");
+    data("amount", String(svc?.pricing.amount ?? 800));
+    data("currency", "usd");
+    data("shared_payment_granted_token", "spt_demo_...");
+    data("confirm", "true");
+    ok("PaymentIntent succeeded: pi_demo_" + Math.random().toString(36).slice(2, 10));
+    log(chalk.dim("(dry run — no actual Stripe call made)"));
+
+    // 7
+    step(7, "Receive service credentials");
+    const apiKey = "lin_demo_" + Math.random().toString(36).slice(2, 14);
+    data("Source", "Post-checkout credential delivery");
+    data(`${serviceName.toUpperCase()}_API_KEY`, apiKey);
+    ok("Credentials stored in vault");
+
+    // 8
+    step(8, "Configure MCP server");
+    if (svc?.mcpServer) {
+      console.log(chalk.dim("      MCP config:"));
+      console.log(chalk.dim(`      {`));
+      console.log(chalk.dim(`        "mcpServers": {`));
+      console.log(chalk.dim(`          "${svc.slug}": {`));
+      console.log(chalk.dim(`            "command": "${svc.mcpServer.configTemplate.command}",`));
+      console.log(chalk.dim(`            "args": "${svc.mcpServer.configTemplate.args}",`));
+      console.log(chalk.dim(`            "env": { "${serviceName.toUpperCase()}_API_KEY": "${apiKey}" }`));
+      console.log(chalk.dim(`          }`));
+      console.log(chalk.dim(`        }`));
+      console.log(chalk.dim(`      }`));
+    }
+    ok(`${serviceName} MCP server ready`);
+
+    // Summary
+    console.log(chalk.bold("\n━━━ complete ━━━\n"));
+    console.log(chalk.green("  Agent can now use " + serviceName + " via MCP."));
+    console.log(chalk.dim("  Total flow: ~10 seconds. Zero browser. Zero context switching.\n"));
+  });
+
 // ── services ────────────────────────────────────────────────────────────
 
 program

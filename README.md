@@ -34,6 +34,12 @@ $ agent-pay confirm linear "$8/mo"
 Total time: ~10 seconds.
 ```
 
+## Demo
+
+![agent-pay demo flow](./assets/demo-flow.png)
+
+*Dry-run of the full purchase flow: discover → Touch ID → payment → MCP config. No real payments, no API keys needed.*
+
 ## How It Works
 
 ```
@@ -79,7 +85,7 @@ Agent → agent-pay CLI → Touch ID → Stripe SPT → Payment → Credentials 
 ### Install
 
 ```bash
-git clone https://github.com/yourusername/agent-commerce.git
+git clone https://github.com/dontoisme/agent-commerce.git
 cd agent-commerce
 pnpm install
 pnpm build
@@ -122,6 +128,7 @@ pnpm dev -- status
 | `agent-pay vault add` | Add payment method or credential |
 | `agent-pay vault list` | List stored payment methods |
 | `agent-pay vault remove <key>` | Remove stored credential |
+| `agent-pay demo [service]` | Dry-run the full purchase flow |
 | `agent-pay status` | Show configuration status |
 
 ## Project Structure
